@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Callable, cast
 
+from lxml.etree import _Element  # pyright: ignore[reportPrivateUsage]
+
 from pptx.enum.lang import MSO_LANGUAGE_ID
 from pptx.enum.text import (
     MSO_AUTO_SIZE,
@@ -15,7 +17,7 @@ from pptx.enum.text import (
 from pptx.exc import InvalidXmlError
 from pptx.oxml import parse_xml
 from pptx.oxml.dml.fill import CT_GradientFillProperties
-from pptx.oxml.ns import nsdecls
+from pptx.oxml.ns import nsdecls, qn
 from pptx.oxml.simpletypes import (
     ST_Coordinate32,
     ST_TextFontScalePercentOrPercentString,
@@ -439,20 +441,32 @@ class CT_TextParagraph(BaseOxmlElement):
                 self.add_r(r_str)
 
     @property
-    def content_children(self) -> tuple[CT_RegularTextRun | CT_TextLineBreak | CT_TextField, ...]:
+    def content_children(
+        self,
+    ) -> tuple[_Element, ...]:
         """Sequence containing text-container child elements of this `a:p` element.
 
-        These include `a:r`, `a:br`, and `a:fld`.
+        These include `a:r`, `a:br`, `a:fld`, and Office Math `a14:m` zones.
         """
         return tuple(
-            e for e in self if isinstance(e, (CT_RegularTextRun, CT_TextLineBreak, CT_TextField))
+            e
+            for e in self
+            if isinstance(e, (CT_RegularTextRun, CT_TextLineBreak, CT_TextField))
+            or e.tag == qn("a14:m")
         )
 
     @property
     def text(self) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
         """str text contained in this paragraph."""
         # ---note this shadows the lxml _Element.text---
-        return "".join([child.text for child in self.content_children])
+        return "".join(
+            (
+                "".join(t.text or "" for t in child.iter(qn("m:t")))
+                if child.tag == qn("a14:m")
+                else child.text or ""
+            )
+            for child in self.content_children
+        )
 
     def _new_r(self):
         r_xml = "<a:r %s><a:t/></a:r>" % nsdecls("a")

@@ -3,6 +3,13 @@
 Release History
 ---------------
 
+1.0.2+qiutumn.omml.1 (unreleased)
++++++++++++++++++++++++++++++++++++
+
+- Add native, editable Office Math input from OMML, MathML, or LaTeX, including
+  inline and display equations and formula parsing after reopening a presentation.
+
+
 1.0.2 (2024-08-07)
 ++++++++++++++++++
 

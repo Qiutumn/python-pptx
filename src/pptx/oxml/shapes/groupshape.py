@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Iterator
+from typing import TYPE_CHECKING, Callable, Iterator, cast
 
 from pptx.enum.shapes import MSO_CONNECTOR_TYPE
 from pptx.oxml import parse_xml
@@ -145,7 +145,20 @@ class CT_GroupShape(BaseShapeElement):
         """
         for elm in self.iterchildren():
             if elm.tag in self._shape_tags:
-                yield elm
+                yield cast("ShapeElement", elm)
+                continue
+            if elm.tag != qn("mc:AlternateContent"):
+                continue
+            # -- Prefer the rich Office choice over a compatibility fallback. --
+            choice = elm.find(qn("mc:Choice"))
+            if choice is None:
+                choice = elm.find(qn("mc:Fallback"))
+            if choice is None:
+                continue
+            for choice_child in choice:
+                if choice_child.tag in self._shape_tags:
+                    yield cast("ShapeElement", choice_child)
+                    break
 
     @property
     def max_shape_id(self) -> int:

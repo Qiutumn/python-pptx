@@ -26,6 +26,9 @@ A run exists to provide character level formatting, including font typeface,
 size, and color, an optional hyperlink target URL, bold, italic, and underline
 styles, strikethrough, kerning, and a few capitalization styles like all caps.
 
+A paragraph can also contain editable Office Math zones. These may be inline
+with ordinary runs or occupy a paragraph as a standalone display equation.
+
 Let's run through these one by one. Only features available in the current
 release are shown.
 
@@ -86,6 +89,48 @@ the same result::
     p = text_frame.paragraphs[0]
     run = p.add_run()
     run.text = 'foobar'
+
+
+Adding editable equations
+-------------------------
+
+Install the optional pure-Python equation converters first::
+
+    pip install "python-pptx[math]"
+
+Use :meth:`._Paragraph.add_latex` for convenient LaTeX input. The result is
+native Office Math (OMML), so it remains editable in PowerPoint rather than
+being inserted as a picture::
+
+    from pptx.dml.color import RGBColor
+    from pptx.util import Pt
+
+    p = shape.text_frame.paragraphs[0]
+    p.add_run().text = "The solution is "
+    equation = p.add_latex(
+        r"x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}",
+        font_size=Pt(24),
+        color=RGBColor(0x17, 0x3B, 0x57),
+    )
+    p.add_run().text = "."
+
+For a standalone equation, use a paragraph of its own and set
+``display=True``::
+
+    p = shape.text_frame.add_paragraph()
+    p.add_latex(r"\sum_{i=1}^{n} i", display=True, font_size=Pt(30))
+
+If the caller already has OMML, :meth:`._Paragraph.add_math` avoids the
+LaTeX/MathML conversion dependencies::
+
+    p.add_math(
+        '<m:oMath xmlns:m="http://schemas.openxmlformats.org/'
+        'officeDocument/2006/math"><m:r><m:t>x</m:t></m:r></m:oMath>'
+    )
+
+Equations are available through :attr:`._Paragraph.math_runs`. The
+:attr:`.Math.text` property returns a simple linear Unicode representation;
+:attr:`.Math.omml` returns the full native equation fragment.
 
 
 Applying text frame-level formatting

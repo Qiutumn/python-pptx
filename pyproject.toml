@@ -34,6 +34,12 @@ license = { text = "MIT" }
 readme = "README.rst"
 requires-python = ">=3.8"
 
+[project.optional-dependencies]
+math = [
+    "latex2mathml>=3.74.0",
+    "mathml2omml>=0.0.2",
+]
+
 [project.urls]
 Changelog = "https://github.com/scanny/python-pptx/blob/master/HISTORY.rst"
 Documentation = "https://python-pptx.readthedocs.io/en/latest/"

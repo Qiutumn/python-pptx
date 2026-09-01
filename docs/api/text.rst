@@ -44,3 +44,14 @@ future other presentation text objects.
    :members:
    :member-order: bysource
    :undoc-members:
+
+
+|Math| objects
+--------------
+
+.. currentmodule:: pptx.math
+
+.. autoclass:: Math()
+   :members:
+   :member-order: bysource
+   :undoc-members:

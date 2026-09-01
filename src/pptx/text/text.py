@@ -8,7 +8,9 @@ from pptx.dml.fill import FillFormat
 from pptx.enum.dml import MSO_FILL
 from pptx.enum.lang import MSO_LANGUAGE_ID
 from pptx.enum.text import MSO_AUTO_SIZE, MSO_UNDERLINE, MSO_VERTICAL_ANCHOR
+from pptx.math import Math, add_math_to_paragraph, latex_to_omml
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+from pptx.oxml.ns import qn
 from pptx.oxml.simpletypes import ST_TextWrappingType
 from pptx.shapes import Subshape
 from pptx.text.fonts import FontFiles
@@ -16,7 +18,7 @@ from pptx.text.layout import TextFitter
 from pptx.util import Centipoints, Emu, Length, Pt, lazyproperty
 
 if TYPE_CHECKING:
-    from pptx.dml.color import ColorFormat
+    from pptx.dml.color import ColorFormat, RGBColor
     from pptx.enum.text import (
         MSO_TEXT_UNDERLINE_TYPE,
         MSO_VERTICAL_ANCHOR,
@@ -475,6 +477,48 @@ class _Paragraph(Subshape):
         """Add line break at end of this paragraph."""
         self._p.add_br()
 
+    def add_latex(
+        self,
+        latex: str,
+        *,
+        display: bool = False,
+        font_size: Length | None = None,
+        color: RGBColor | None = None,
+    ) -> Math:
+        """Append editable Office Math converted from ``latex`` to this paragraph.
+
+        ``display=False`` creates an inline equation. A display equation should generally be the
+        only content in its paragraph. The optional ``math`` package extra supplies the converters.
+        """
+        return self.add_math(
+            latex_to_omml(latex, display=display),
+            display=display,
+            font_size=font_size,
+            color=color,
+        )
+
+    def add_math(
+        self,
+        omml: str,
+        *,
+        display: bool | None = None,
+        font_size: Length | None = None,
+        color: RGBColor | None = None,
+    ) -> Math:
+        """Append an editable Office Math expression supplied as OMML XML.
+
+        ``omml`` must have an ``m:oMath`` or ``m:oMathPara`` root. Set ``display`` to normalize
+        the root to inline or display form; ``None`` preserves the supplied root.
+        """
+        return add_math_to_paragraph(
+            self._element,
+            self,
+            omml,
+            display=display,
+            font_size=font_size,
+            color=color,
+        )
+
     def add_run(self) -> _Run:
         """Return a new run appended to the runs in this paragraph."""
         r = self._p.add_r()
@@ -553,6 +597,11 @@ class _Paragraph(Subshape):
         return tuple(_Run(r, self) for r in self._element.r_lst)
 
     @property
+    def math_runs(self) -> tuple[Math, ...]:
+        """Sequence of editable Office Math zones in this paragraph."""
+        return tuple(Math(math_elm, self) for math_elm in self._element.findall(qn("a14:m")))
+
+    @property
     def space_after(self) -> Length | None:
         """The spacing to appear between this paragraph and the subsequent paragraph.
 
@@ -608,7 +657,7 @@ class _Paragraph(Subshape):
         instead. Any other control characters in the assigned string are escaped as a hex
         representation like "_x001B_" (for ESC (ASCII 27) in this example).
         """
-        return "".join(elm.text for elm in self._element.content_children)
+        return self._element.text
 
     @text.setter
     def text(self, text: str):

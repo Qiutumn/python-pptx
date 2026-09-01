@@ -10,6 +10,7 @@ from ._element import _ElementTree as _ElementTree
 from ._module_func import fromstring as fromstring
 from ._module_func import tostring as tostring
 from ._module_misc import QName as QName
+from ._module_misc import XMLSyntaxError as XMLSyntaxError
 from ._nsclasses import ElementNamespaceClassLookup as ElementNamespaceClassLookup
 from ._parser import HTMLParser as HTMLParser
 from ._parser import XMLParser as XMLParser
