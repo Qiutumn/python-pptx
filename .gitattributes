@@ -1,0 +1,4 @@
+# XML expected-output fixtures are compared byte-for-byte on every platform.
+*.xml text eol=lf
+*.rels text eol=lf
+tests/test_files/snippets/*.txt text eol=lf
