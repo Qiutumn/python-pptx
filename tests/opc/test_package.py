@@ -612,7 +612,8 @@ class Describe_ContentTypeMap:
     # fixtures ---------------------------------------------
 
     @pytest.fixture(scope="class")
-    def content_type_map(self):
+    @classmethod
+    def content_type_map(cls):
         return _ContentTypeMap.from_xml(testfile_bytes("expanded_pptx", "[Content_Types].xml"))
 
 
