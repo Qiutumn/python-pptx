@@ -127,8 +127,8 @@ class DescribeFontFiles(object):
             "/Library/Fonts",
             "/Network/Library/Fonts",
             "/System/Library/Fonts",
-            "/Users/fbar/Library/Fonts",
-            "/Users/fbar/.fonts",
+            os.path.join("/Users/fbar", "Library", "Fonts"),
+            os.path.join("/Users/fbar", ".fonts"),
         ]
 
     @pytest.fixture
