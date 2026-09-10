@@ -5,8 +5,11 @@
 from __future__ import annotations
 
 import io
+from decimal import Decimal
+from zipfile import ZipFile
 
 import pytest
+from lxml import etree
 from xlsxwriter import Workbook
 from xlsxwriter.worksheet import Worksheet
 
@@ -25,6 +28,28 @@ from pptx.chart.xlsx import (
 )
 
 from ..unitutil.mock import ANY, call, class_mock, instance_mock, method_mock
+
+
+@pytest.mark.parametrize("kind", ["category", "xy", "bubble"])
+def test_chart_workbook_preserves_decimal_spelling(kind):
+    values = [0.81, -0.07, 0.0, 1.23456789012345, 1.2e-20]
+    if kind == "category":
+        data = CategoryChartData()
+        data.categories = ["A", "B", "C", "D", "E"]
+        data.add_series("values", values)
+    else:
+        data = XyChartData() if kind == "xy" else BubbleChartData()
+        series = data.add_series("values")
+        for index, value in enumerate(values):
+            series.add_data_point(index, value, *([0.81] if kind == "bubble" else []))
+    with ZipFile(io.BytesIO(data.xlsx_blob)) as package:
+        sheet = etree.fromstring(package.read("xl/worksheets/sheet1.xml"))
+    ns = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    cells = {cell.get("r"): cell.find("s:v", ns).text
+             for cell in sheet.findall(".//s:c", ns) if cell.find("s:v", ns) is not None}
+    assert [Decimal(cells[f"B{row}"]) for row in range(2, 7)] == [Decimal(str(v)) for v in values]
+    if kind == "bubble":
+        assert [Decimal(cells[f"C{row}"]) for row in range(2, 7)] == [Decimal("0.81")] * 5
 
 
 class Describe_BaseWorkbookWriter(object):

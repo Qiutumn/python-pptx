@@ -3,6 +3,12 @@
 Release History
 ---------------
 
+1.0.2+qiutumn.omml.3 (unreleased)
++++++++++++++++++++++++++++++++++++
+
+- Preserve decimal spelling of chart values in the embedded workbook, including
+  category, XY and bubble charts, without binary-float formatting tails.
+
 1.0.2+qiutumn.omml.2 (unreleased)
 +++++++++++++++++++++++++++++++++++
 

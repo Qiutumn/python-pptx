@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 from contextlib import contextmanager
+from decimal import Decimal
 
 from xlsxwriter import Workbook
 
@@ -35,10 +36,17 @@ class _BaseWorkbookWriter(object):
         workbook = Workbook(xlsx_file, {"in_memory": True, "strings_to_formulas": False,
                                        "strings_to_urls": False})
         worksheet = workbook.add_worksheet()
+        # XlsxWriter's .16G formatting of binary floats can write 0.81 as
+        # 0.8100000000000001. Use the same decimal spelling as the chart cache.
+        worksheet.add_write_handler(float, self._write_float)
         try:
             yield workbook, worksheet
         finally:
             workbook.close()
+
+    @staticmethod
+    def _write_float(worksheet, row, col, value, cell_format=None):
+        return worksheet.write_number(row, col, Decimal(str(value)), cell_format)
 
     def _populate_worksheet(self, workbook, worksheet):
         """
