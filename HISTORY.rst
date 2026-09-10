@@ -3,6 +3,12 @@
 Release History
 ---------------
 
+1.0.2+qiutumn.omml.2 (unreleased)
++++++++++++++++++++++++++++++++++++
+
+- Repair converter-generated properties for stretchy formula accents.
+- Preserve normal baselines for braces, native bars and stretching vector arrows.
+
 1.0.2+qiutumn.omml.1 (unreleased)
 +++++++++++++++++++++++++++++++++++
 
