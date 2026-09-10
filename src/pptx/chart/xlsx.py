@@ -31,10 +31,14 @@ class _BaseWorkbookWriter(object):
         stream object (such as an `io.BytesIO` instance) is expected as
         *xlsx_file*.
         """
-        workbook = Workbook(xlsx_file, {"in_memory": True})
+        # Chart labels are literal text, including strings starting with '=' or URLs.
+        workbook = Workbook(xlsx_file, {"in_memory": True, "strings_to_formulas": False,
+                                       "strings_to_urls": False})
         worksheet = workbook.add_worksheet()
-        yield workbook, worksheet
-        workbook.close()
+        try:
+            yield workbook, worksheet
+        finally:
+            workbook.close()
 
     def _populate_worksheet(self, workbook, worksheet):
         """

@@ -51,7 +51,9 @@ class Describe_BaseWorkbookWriter(object):
         wb_writer, xlsx_file_, workbook_, worksheet_, Workbook_ = open_fixture
 
         with wb_writer._open_worksheet(xlsx_file_) as (workbook, worksheet):
-            Workbook_.assert_called_once_with(xlsx_file_, {"in_memory": True})
+            Workbook_.assert_called_once_with(xlsx_file_, {"in_memory": True,
+                                                         "strings_to_formulas": False,
+                                                         "strings_to_urls": False})
             workbook_.add_worksheet.assert_called_once_with()
             assert workbook is workbook_
             assert worksheet is worksheet_
