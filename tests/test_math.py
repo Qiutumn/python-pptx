@@ -10,6 +10,7 @@ import pytest
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.math import MathConversionError, latex_to_omml, mathml_to_omml
+from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt
 
 
@@ -34,6 +35,32 @@ def test_it_converts_mathml_to_omml():
     assert "<m:sSup>" in omml
 
 
+@pytest.mark.parametrize(("latex", "kind"), [
+    (r"\bar{x}", "bar"), (r"\overline{x+y}", "bar"), (r"\underline{x+y}", "bar"),
+    (r"\overbrace{x+y}^{n}", "groupChr"), (r"\underbrace{x+y}_{n}", "groupChr"),
+    (r"\overrightarrow{AB}", "acc"), (r"\overline{\underline{x}}", "bar"),
+    (r"\overleftarrow{AB}", "acc"), (r"\overleftrightarrow{AB}", "acc"),
+])
+def test_stretchy_accents_convert_and_round_trip_as_native_math(latex, kind):
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    paragraph = slide.shapes.add_textbox(0, 0, Inches(8), Inches(2)).text_frame.paragraphs[0]
+    equation = paragraph.add_latex(latex, display=True, font_size=Pt(24))
+    groups = list(equation.element.iter(qn("m:" + kind)))
+    assert groups
+    assert all(
+        group.find(qn("m:" + kind + "Pr")) is not None and group.find(qn("m:e")) is not None
+        for group in groups
+    )
+    visible = equation.text
+    stream = BytesIO()
+    prs.save(stream)
+    stream.seek(0)
+    restored = Presentation(stream).slides[0].shapes[0].text_frame.paragraphs[0].math_runs[0]
+    assert restored.text == visible
+    assert len(list(restored.element.iter(qn("m:" + kind)))) == len(groups)
+
+
 def test_it_rejects_unsafe_or_non_math_omml():
     prs = Presentation()
     slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -43,6 +70,9 @@ def test_it_rejects_unsafe_or_non_math_omml():
         paragraph.add_math('<!DOCTYPE math [<!ENTITY x "x">]><m:oMath><m:t>&x;</m:t></m:oMath>')
     with pytest.raises(MathConversionError, match="root"):
         paragraph.add_math("<a:r><a:t>x</a:t></a:r>")
+    with pytest.raises(MathConversionError, match="invalid OMML XML"):
+        paragraph.add_math('<m:oMath><m:groupChr><m:groupChrPr><m:chr m:val="¯"/>'
+                           '<m:pos m:val="top"/></m:groupChr><m:e/></m:groupChr></m:oMath>')
 
 
 def test_it_adds_and_round_trips_an_inline_equation():

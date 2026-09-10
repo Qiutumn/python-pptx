@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from copy import deepcopy
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, cast
@@ -128,7 +129,58 @@ def mathml_to_omml(mathml: str, *, display: bool = False) -> str:
         omml = mathml2omml.convert(mathml)
     except Exception as exc:
         raise MathConversionError(f"could not convert MathML to OMML: {exc}") from exc
-    return _serialize_omml(_parse_omml(omml, display=display))
+    # mathml2omml 0.0.2 closes groupChrPr with </m:groupChr> for stretchy
+    # over/underscripts. Normalize only that converter-emitted property shape;
+    # direct user-supplied OMML still goes through strict XML validation.
+    omml = re.sub(
+        r'(<m:groupChrPr><m:chr m:val="[^"]*"/><m:pos m:val="(?:top|bot)"/>)</m:groupChr>',
+        r"\1</m:groupChrPr>",
+        omml,
+    )
+    root = _parse_omml(omml, display=display)
+    _normalize_converted_accents(root)
+    return _serialize_omml(root)
+
+
+def _normalize_converted_accents(root: _Element) -> None:
+    """Keep converted accents on the base's baseline and stretch over its width."""
+    for element in list(root.iter()):
+        tag = etree.QName(element).localname
+        kind, character, position = None, None, None
+        if tag == "groupChr":
+            properties = element.find(qn("m:groupChrPr"))
+            if properties is None:
+                continue
+            marker, placement = properties.find(qn("m:chr")), properties.find(qn("m:pos"))
+            character = marker.get(qn("m:val")) if marker is not None else None
+            position = placement.get(qn("m:val"), "bot") if placement is not None else "bot"
+            if character in {"¯", "―"}:
+                kind = "bar"
+            elif position == "top" and character in {"←", "→", "↔"}:
+                kind = "acc"
+                character = {"←": "\u20d6", "→": "\u20d7", "↔": "\u20e1"}[character]
+            else:
+                # With a top group character, Office otherwise puts the base
+                # below the surrounding baseline and shrinks it like a script.
+                if properties.find(qn("m:vertJc")) is None:
+                    align = etree.SubElement(properties, qn("m:vertJc"))
+                    align.set(qn("m:val"), "bot" if position == "top" else "top")
+        elif tag in {"limUpp", "limLow"}:
+            limit = element.find(qn("m:lim"))
+            if limit is not None and len(limit) == 1 and limit[0].tag == qn("m:r"):
+                text = limit[0].find(qn("m:t"))
+                if text is not None and text.text == "―":
+                    kind, position = "bar", "top" if tag == "limUpp" else "bot"
+        base = element.find(qn("m:e"))
+        parent = element.getparent()
+        if kind is None or base is None or parent is None:
+            continue
+        replacement = etree.Element(qn("m:" + kind))
+        properties = etree.SubElement(replacement, qn("m:" + kind + "Pr"))
+        option = etree.SubElement(properties, qn("m:pos" if kind == "bar" else "m:chr"))
+        option.set(qn("m:val"), position if kind == "bar" else character)
+        replacement.append(base)
+        parent.replace(element, replacement)
 
 
 def _apply_math_style(
